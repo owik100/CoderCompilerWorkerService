@@ -4,12 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CodeCompilerService
+namespace CodeCompilerService.OptionModels
 {
-    public class WorkerOptions
+    public class WorkerServiceOptions
     {
         public int Interval { get; set; }
-        public string InputPath { get; set; }
-        public string OutputPath { get; set; }
+        public int InternalBufferSize { get; set; }
     }
 }

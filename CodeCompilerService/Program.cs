@@ -1,4 +1,5 @@
 using CodeCompilerService;
+using CodeCompilerService.OptionModels;
 
 IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((hostContext ,services) =>
@@ -6,8 +7,10 @@ IHost host = Host.CreateDefaultBuilder(args)
         services.AddHostedService<Worker>();
 
         IConfiguration configuration = hostContext.Configuration;
-        WorkerOptions options = configuration.GetSection("Options").Get<WorkerOptions>();
-        services.AddSingleton(options);
+        WorkerServiceOptions serviceOptions = configuration.GetSection("ServiceOptions").Get<WorkerServiceOptions>();
+        CodeCompilerLibOptions codeCompilerLibOptions = configuration.GetSection("CodeCompilerLibOptions").Get<CodeCompilerLibOptions>();
+        services.AddSingleton(codeCompilerLibOptions);
+        services.AddSingleton(serviceOptions);
     })
     .Build();
 
