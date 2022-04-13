@@ -1,7 +1,15 @@
 using CodeCompilerService;
 using CodeCompilerService.OptionModels;
+using Microsoft.Extensions.Logging.EventLog;
 
 IHost host = Host.CreateDefaultBuilder(args)
+     .ConfigureLogging((context, logging) =>
+     {
+         logging.AddEventLog(new EventLogSettings()
+         {
+             LogName = "CodeCompilerServiceLogging",
+         });
+     })
     .ConfigureServices((hostContext ,services) =>
     {
         services.AddHostedService<Worker>();
@@ -12,6 +20,7 @@ IHost host = Host.CreateDefaultBuilder(args)
         services.AddSingleton(codeCompilerLibOptions);
         services.AddSingleton(serviceOptions);
     })
+    .UseWindowsService()
     .Build();
 
 await host.RunAsync();
