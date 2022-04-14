@@ -1,18 +1,12 @@
 using CodeCompilerService;
 using CodeCompilerService.OptionModels;
-using Microsoft.Extensions.Logging.EventLog;
+using Serilog;
 
 IHost host = Host.CreateDefaultBuilder(args)
-     .ConfigureLogging((context, logging) =>
-     {
-         logging.AddEventLog(new EventLogSettings()
-         {
-             LogName = "CodeCompilerServiceLogging",
-         });
-     })
     .ConfigureServices((hostContext ,services) =>
     {
         services.AddHostedService<Worker>();
+        services.AddLogging(configure => configure.AddSerilog());
 
         IConfiguration configuration = hostContext.Configuration;
         WorkerServiceOptions serviceOptions = configuration.GetSection("ServiceOptions").Get<WorkerServiceOptions>();
@@ -21,6 +15,8 @@ IHost host = Host.CreateDefaultBuilder(args)
         services.AddSingleton(serviceOptions);
     })
     .UseWindowsService()
+    .UseSerilog((hostingContext, loggerConfiguration) =>
+                loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration))
     .Build();
 
 await host.RunAsync();
