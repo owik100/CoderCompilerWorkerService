@@ -1,5 +1,6 @@
 using CodeCompilerNs;
 using CodeCompilerService.OptionModels;
+using Microsoft.CodeAnalysis.CSharp;
 using System.Text;
 
 namespace CodeCompilerService
@@ -21,7 +22,16 @@ namespace CodeCompilerService
             _codeCompilerLibOptions = codeCompilerLibOptions;
             fileWatcher = new FileSystemWatcher();
 
-            codeCompiler = new CodeCompiler(cSharpCompilationOptions: new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(Microsoft.CodeAnalysis.OutputKind.ConsoleApplication));
+            Microsoft.CodeAnalysis.OutputKind outputKind = Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary;
+            if (_codeCompilerLibOptions.BuildToConsoleApp)
+            {
+                outputKind = Microsoft.CodeAnalysis.OutputKind.ConsoleApplication;
+            }
+            else
+            {
+                outputKind = Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary;
+            }
+            codeCompiler = new CodeCompiler(cSharpCompilationOptions: new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(outputKind));
         }
 
 

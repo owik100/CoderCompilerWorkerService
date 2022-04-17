@@ -10,5 +10,6 @@ namespace CodeCompilerService.OptionModels
     {
         public string InputPath { get; set; }
         public string OutputPath { get; set; }
+        public bool BuildToConsoleApp { get; set; }
     }
 }
