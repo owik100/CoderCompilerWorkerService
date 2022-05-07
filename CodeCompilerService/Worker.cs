@@ -15,6 +15,8 @@ namespace CodeCompilerService
         private CodeCompiler codeCompiler;
         private bool firstCall = true;
 
+        ConnectionManagerServer server;
+
         public Worker(ILogger<Worker> logger, WorkerServiceOptions serviceOptions, CodeCompilerLibOptions codeCompilerLibOptions)
         {
             _logger = logger;
@@ -32,6 +34,11 @@ namespace CodeCompilerService
                 outputKind = Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary;
             }
             codeCompiler = new CodeCompiler(cSharpCompilationOptions: new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(outputKind));
+            //Opcja w konfigu wlaczona
+            if (true)
+            {
+                server = new ConnectionManagerServer(logger);
+            }
         }
 
 
@@ -41,8 +48,12 @@ namespace CodeCompilerService
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    if(!firstCall)
+                    if (!firstCall)
+                    {
                         _logger.LogInformation("CodeCompilerService still alive...");
+                        server.SendToClient("CodeCompilerService still alive...");
+                    }
+
 
                     firstCall = false;
                     await Task.Delay(_serviceOptions.Interval, stoppingToken);
@@ -57,6 +68,7 @@ namespace CodeCompilerService
         public override Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("STARTING CodeCompilerService...");
+            server.SendToClient("STARTING CodeCompilerService...");
             try
             {
                 fileWatcher.Path = _codeCompilerLibOptions.InputPath;
@@ -64,6 +76,7 @@ namespace CodeCompilerService
                 fileWatcher.EnableRaisingEvents = true;
                 fileWatcher.InternalBufferSize = _serviceOptions.InternalBufferSize;
                 _logger.LogInformation($"CodeCompilerService listening for files in directory {fileWatcher.Path}");
+                server.SendToClient($"CodeCompilerService listening for files in directory {fileWatcher.Path}");
             }
             catch (Exception ex)
             {
@@ -78,10 +91,12 @@ namespace CodeCompilerService
             try
             {
                 _logger.LogInformation($"File {e.Name} was added to input folder");
+                server.SendToClient($"File {e.Name} was added to input folder");
                 var res = codeCompiler.CreateAssemblyToPath(e.FullPath, _codeCompilerLibOptions.OutputPath);
                 if (res.Success)
                 {
                     _logger.LogInformation($"File {e.Name} compiled correctly");
+                    server.SendToClient($"File {e.Name} compiled correctly");
                 }
                 else
                 {
@@ -92,6 +107,7 @@ namespace CodeCompilerService
                         sb.Append(Environment.NewLine);
                     }
                     _logger.LogWarning($"File {e.Name} compiled with errors: {sb.ToString()}");
+                    server.SendToClient($"File {e.Name} compiled with errors: {sb.ToString()}");
                 }
             }
             catch (Exception ex)
@@ -105,6 +121,7 @@ namespace CodeCompilerService
             try
             {
                 _logger.LogInformation("ENDING CodeCompilerService");
+                server.SendToClient("ENDING CodeCompilerService");
             }
             catch (Exception ex)
             {
