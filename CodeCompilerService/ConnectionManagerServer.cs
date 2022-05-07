@@ -11,18 +11,17 @@ namespace CodeCompilerService
     public class ConnectionManagerServer
     {
         private readonly ILogger<Worker> _logger;
-        //TODO w managerze bedzie opcja wlacz/wylacz. Zapisywana w konfigu
         Socket _server;
 
         List<Socket> _clientsList = new List<Socket>();
         byte[] _buffer = new byte[512];
         IPAddress _ipAdress = IPAddress.Parse("127.0.0.1");
-        //TODO port będzie w konfigu. Ustawiany z menagera. Bedzie opcja znajdz wolny port
         int _port = 3055;
 
-        public ConnectionManagerServer(ILogger<Worker> logger)
+        public ConnectionManagerServer(ILogger<Worker> logger, int port)
         {
             _logger = logger;
+            _port = port;
             RunServer();
         }
 
@@ -34,7 +33,7 @@ namespace CodeCompilerService
                 _server.Bind(new IPEndPoint(_ipAdress, _port));
                 _server.Listen(3);
                 _server.BeginAccept(_server.ReceiveBufferSize, new AsyncCallback(AcceptConnection), null);
-                _logger.LogInformation("Server listening...");
+                _logger.LogInformation($"Server listening on port {_port}...");
             }
             catch (Exception ex)
             {
