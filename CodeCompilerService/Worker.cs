@@ -34,11 +34,6 @@ namespace CodeCompilerService
                 outputKind = Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary;
             }
             codeCompiler = new CodeCompiler(cSharpCompilationOptions: new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(outputKind));
-            //Opcja w konfigu wlaczona
-            if (true)
-            {
-                server = new ConnectionManagerServer(logger);
-            }
         }
 
 
@@ -67,6 +62,11 @@ namespace CodeCompilerService
 
         public override Task StartAsync(CancellationToken cancellationToken)
         {
+            //Opcja w konfigu wlaczona
+            if (true)
+            {
+                server = new ConnectionManagerServer(_logger);
+            }
             _logger.LogInformation("STARTING CodeCompilerService...");
             server.SendToClient("STARTING CodeCompilerService...");
             try

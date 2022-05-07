@@ -73,22 +73,6 @@ namespace CodeCompilerService
                 _logger.LogError(ex.Message);
             }
         }
-
-        public void SendToClient(string message)
-        {
-            try
-            {
-                byte[] dataBuf = Encoding.UTF8.GetBytes(message);
-                foreach (var item in _clientsList)
-                {
-                    item.BeginSend(dataBuf, 0, dataBuf.Length, SocketFlags.None, null, null);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.Message);
-            }
-        }
         private void DisconnectClient(Socket socket)
         {
             try
@@ -100,6 +84,22 @@ namespace CodeCompilerService
                 socket.Dispose();
 
                 _logger.LogInformation("Client from manager disconnected");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+            }
+        }
+
+        public void SendToClient(string message)
+        {
+            try
+            {
+                byte[] dataBuf = Encoding.UTF8.GetBytes(message);
+                foreach (var item in _clientsList)
+                {
+                    item.BeginSend(dataBuf, 0, dataBuf.Length, SocketFlags.None, null, null);
+                }
             }
             catch (Exception ex)
             {
