@@ -17,12 +17,15 @@ namespace CodeCompilerService
 
         ConnectionManagerServer server;
 
+        Queue<FileSystemEventArgs> queue;
+
         public Worker(ILogger<Worker> logger, WorkerServiceOptions serviceOptions, CodeCompilerLibOptions codeCompilerLibOptions)
         {
             _logger = logger;
             _serviceOptions = serviceOptions;
             _codeCompilerLibOptions = codeCompilerLibOptions;
             fileWatcher = new FileSystemWatcher();
+            queue = new Queue<FileSystemEventArgs>();
 
             Microsoft.CodeAnalysis.OutputKind outputKind = Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary;
             if (_codeCompilerLibOptions.BuildToConsoleApp)
@@ -50,6 +53,32 @@ namespace CodeCompilerService
                     }
 
 
+                    //CreateDummyFiles();
+
+                    while (queue.Count > 0)
+                    {
+                       var item = queue.Dequeue();
+
+                        var res = codeCompiler.CreateAssemblyToPath(item.FullPath, _codeCompilerLibOptions.OutputPath);
+                        if (res.Success)
+                        {
+                            _logger.LogInformation($"File {item.Name} compiled correctly");
+                            server?.SendToClient($"File {item.Name} compiled correctly");
+                        }
+                        else
+                        {
+                            StringBuilder sb = new StringBuilder();
+                            foreach (var item2 in res.Diagnostics)
+                            {
+                                sb.Append(item2.GetMessage());
+                                sb.Append(Environment.NewLine);
+                            }
+                            _logger.LogWarning($"File {item.Name} compiled with errors: {sb.ToString()}");
+                            server?.SendToClient($"File {item.Name} compiled with errors: {sb.ToString()}");
+                        }
+                    }
+
+                       
                     firstCall = false;
                     await Task.Delay(_serviceOptions.Interval, stoppingToken);
                 }
@@ -57,6 +86,17 @@ namespace CodeCompilerService
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
+            }
+        }
+
+        private void CreateDummyFiles()
+        {
+            for (int i = 0; i < 1000; i++)
+            {
+                using (StreamWriter sw = File.CreateText(fileWatcher.Path + "\\File" + i + ".cs"))
+                {
+                    sw.WriteLine("namespace HelloWorld{class Hello{static void Main(string[] args){System.Console.WriteLine(\"Hello World!\");System.Threading.Thread.Sleep(3000);System.Console.ReadKey();}}}");
+                }
             }
         }
 
@@ -94,25 +134,9 @@ namespace CodeCompilerService
         {
             try
             {
-                _logger.LogInformation($"File {e.Name} was added to input folder");
-                server?.SendToClient($"File {e.Name} was added to input folder");
-                var res = codeCompiler.CreateAssemblyToPath(e.FullPath, _codeCompilerLibOptions.OutputPath);
-                if (res.Success)
-                {
-                    _logger.LogInformation($"File {e.Name} compiled correctly");
-                    server?.SendToClient($"File {e.Name} compiled correctly");
-                }
-                else
-                {
-                    StringBuilder sb = new StringBuilder();
-                    foreach (var item in res.Diagnostics)
-                    {
-                        sb.Append(item.GetMessage());
-                        sb.Append(Environment.NewLine);
-                    }
-                    _logger.LogWarning($"File {e.Name} compiled with errors: {sb.ToString()}");
-                    server?.SendToClient($"File {e.Name} compiled with errors: {sb.ToString()}");
-                }
+                _logger.LogInformation($"File {e.Name} was added to queue");
+                server?.SendToClient($"File {e.Name} was added to queue");
+                queue.Enqueue(e);
             }
             catch (Exception ex)
             {
