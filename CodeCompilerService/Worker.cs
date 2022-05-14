@@ -2,6 +2,7 @@ using CodeCompilerNs;
 using CodeCompilerService.OptionModels;
 using Microsoft.CodeAnalysis.CSharp;
 using System.Text;
+using System.Threading;
 
 namespace CodeCompilerService
 {
@@ -16,8 +17,7 @@ namespace CodeCompilerService
         private bool firstCall = true;
 
         ConnectionManagerServer server;
-
-        Queue<FileSystemEventArgs> queue;
+        Queue<FileSystemEventArgs> queueFiles;
 
         public Worker(ILogger<Worker> logger, WorkerServiceOptions serviceOptions, CodeCompilerLibOptions codeCompilerLibOptions)
         {
@@ -25,7 +25,7 @@ namespace CodeCompilerService
             _serviceOptions = serviceOptions;
             _codeCompilerLibOptions = codeCompilerLibOptions;
             fileWatcher = new FileSystemWatcher();
-            queue = new Queue<FileSystemEventArgs>();
+            queueFiles = new Queue<FileSystemEventArgs>();
 
             Microsoft.CodeAnalysis.OutputKind outputKind = Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary;
             if (_codeCompilerLibOptions.BuildToConsoleApp)
@@ -52,18 +52,35 @@ namespace CodeCompilerService
                         server?.SendToClient("CodeCompilerService still alive...");
                     }
 
-
                     //CreateDummyFiles();
 
-                    while (queue.Count > 0)
+                    Semaphore sem = new Semaphore(_serviceOptions.MaxThreads, _serviceOptions.MaxThreads);
+                    while (queueFiles.Count > 0)
                     {
-                       var item = queue.Dequeue();
+                        sem.WaitOne();
+                        var file = queueFiles.Dequeue();
+                        ThreadPool.QueueUserWorkItem(ProcessItem, file);
+                    }
 
-                        var res = codeCompiler.CreateAssemblyToPath(item.FullPath, _codeCompilerLibOptions.OutputPath);
+                    // When the queue is empty, you have to wait for all processing
+                    // threads to complete.
+                    // If you can acquire the semaphore MaxThreads times, all workers are done
+                    int count = 0;
+                    while (count < _serviceOptions.MaxThreads)
+                    {
+                        sem.WaitOne();
+                        ++count;
+                    }
+
+                    // the code to process an item
+                    void ProcessItem(object item)
+                    {
+                        FileSystemEventArgs paresedFile = item as FileSystemEventArgs;
+                        var res = codeCompiler.CreateAssemblyToPath(paresedFile.FullPath, _codeCompilerLibOptions.OutputPath);
                         if (res.Success)
                         {
-                            _logger.LogInformation($"File {item.Name} compiled correctly");
-                            server?.SendToClient($"File {item.Name} compiled correctly");
+                            _logger.LogInformation($"File {paresedFile.Name} compiled correctly");
+                            server?.SendToClient($"File {paresedFile.Name} compiled correctly");
                         }
                         else
                         {
@@ -73,12 +90,13 @@ namespace CodeCompilerService
                                 sb.Append(item2.GetMessage());
                                 sb.Append(Environment.NewLine);
                             }
-                            _logger.LogWarning($"File {item.Name} compiled with errors: {sb.ToString()}");
-                            server?.SendToClient($"File {item.Name} compiled with errors: {sb.ToString()}");
+                            _logger.LogWarning($"File {paresedFile.Name} compiled with errors: {sb.ToString()}");
+                            server?.SendToClient($"File {paresedFile.Name} compiled with errors: {sb.ToString()}");
                         }
+                        // when done processing, release the semaphore
+                        sem.Release();
                     }
 
-                       
                     firstCall = false;
                     await Task.Delay(_serviceOptions.Interval, stoppingToken);
                 }
@@ -86,17 +104,6 @@ namespace CodeCompilerService
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
-            }
-        }
-
-        private void CreateDummyFiles()
-        {
-            for (int i = 0; i < 1000; i++)
-            {
-                using (StreamWriter sw = File.CreateText(fileWatcher.Path + "\\File" + i + ".cs"))
-                {
-                    sw.WriteLine("namespace HelloWorld{class Hello{static void Main(string[] args){System.Console.WriteLine(\"Hello World!\");System.Threading.Thread.Sleep(3000);System.Console.ReadKey();}}}");
-                }
             }
         }
 
@@ -122,6 +129,7 @@ namespace CodeCompilerService
                 _logger.LogInformation($"CodeCompilerService listening for files in directory {fileWatcher.Path}");
                 server?.SendToClient($"CodeCompilerService listening for files in directory {fileWatcher.Path}");
             }
+               
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
@@ -136,7 +144,7 @@ namespace CodeCompilerService
             {
                 _logger.LogInformation($"File {e.Name} was added to queue");
                 server?.SendToClient($"File {e.Name} was added to queue");
-                queue.Enqueue(e);
+                queueFiles.Enqueue(e);
             }
             catch (Exception ex)
             {
@@ -156,6 +164,17 @@ namespace CodeCompilerService
                 _logger.LogError(ex.Message);
             }
             return base.StopAsync(cancellationToken);
+        }
+
+        private void CreateDummyFiles()
+        {
+            for (int i = 0; i < 1000; i++)
+            {
+                using (StreamWriter sw = File.CreateText(fileWatcher.Path + "\\File" + i + ".cs"))
+                {
+                    sw.WriteLine("namespace HelloWorld{class Hello{static void Main(string[] args){System.Console.WriteLine(\"Hello World!\");System.Threading.Thread.Sleep(3000);System.Console.ReadKey();}}}");
+                }
+            }
         }
     }
 }
