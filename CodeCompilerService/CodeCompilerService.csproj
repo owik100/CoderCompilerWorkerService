@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Library\AssemblyFromString\CodeCompiler\CodeCompiler.csproj" />
+    <ProjectReference Include="..\..\CodeCompilerLib\CodeCompiler\CodeCompiler.csproj" />
+    <ProjectReference Include="..\..\CodeCompilerSettingsModels\CodeCompilerSettingsModels.csproj" />
   </ItemGroup>
 </Project>
