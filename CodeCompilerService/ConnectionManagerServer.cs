@@ -11,6 +11,7 @@ namespace CodeCompilerService
     public class ConnectionManagerServer
     {
         private readonly ILogger<Worker> _logger;
+        private static readonly object SyncObject = new object();
         Socket _server;
 
         List<Socket> _clientsList = new List<Socket>();
@@ -94,10 +95,13 @@ namespace CodeCompilerService
         {
             try
             {
-                byte[] dataBuf = Encoding.UTF8.GetBytes(message);
-                foreach (var item in _clientsList)
+                lock (SyncObject)
                 {
-                    item.BeginSend(dataBuf, 0, dataBuf.Length, SocketFlags.None, null, null);
+                    byte[] dataBuf = Encoding.UTF8.GetBytes(message);
+                    foreach (var item in _clientsList)
+                    {
+                        item.BeginSend(dataBuf, 0, dataBuf.Length, SocketFlags.None, null, null);
+                    }
                 }
             }
             catch (Exception ex)

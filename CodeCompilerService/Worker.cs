@@ -91,7 +91,7 @@ namespace CodeCompilerService
                                 sb.Append(Environment.NewLine);
                             }
                             _logger.LogWarning($"File {paresedFile.Name} compiled with errors: {sb.ToString()}");
-                            server?.SendToClient($"File {paresedFile.Name} compiled with errors: {sb.ToString()}");
+                            server?.SendToClient($"[SERVICE ERROR]File {paresedFile.Name} compiled with errors: {sb.ToString()}");
                         }
                         // when done processing, release the semaphore
                         sem.Release();
@@ -168,11 +168,21 @@ namespace CodeCompilerService
 
         private void CreateDummyFiles()
         {
+            string ok = "namespace HelloWorld{class Hello{static void Main(string[] args){System.Console.WriteLine(\"Hello World!\");System.Threading.Thread.Sleep(3000);System.Console.ReadKey();}}}";
+            string bad = "namespace  2 2 dim HelloWorld{class Hello{static void Main(string[] args){System.Console.WritqqqqqeLine(\"Hello World!\");System.Threading.Thread.Sleep(3000);System.Console.ReadKey();}}}";
             for (int i = 0; i < 1000; i++)
             {
                 using (StreamWriter sw = File.CreateText(fileWatcher.Path + "\\File" + i + ".cs"))
                 {
-                    sw.WriteLine("namespace HelloWorld{class Hello{static void Main(string[] args){System.Console.WriteLine(\"Hello World!\");System.Threading.Thread.Sleep(3000);System.Console.ReadKey();}}}");
+                    if (i % 10 == 0)
+                    {
+                        sw.WriteLine(bad);
+                    }
+                    else
+                    {
+                        sw.WriteLine(ok);
+                    }
+
                 }
             }
         }
