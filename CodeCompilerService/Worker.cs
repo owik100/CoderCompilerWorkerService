@@ -46,7 +46,7 @@ namespace CodeCompilerService
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    if (!firstCall)
+                    if (!firstCall && _serviceOptions.SendMessagesToManagerAboutBeingAlive)
                     {
                         _logger.LogInformation("CodeCompilerService still alive...");
                         server?.SendToClient("CodeCompilerService still alive...");
