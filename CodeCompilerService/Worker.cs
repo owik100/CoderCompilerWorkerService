@@ -48,8 +48,7 @@ namespace CodeCompilerService
                 {
                     if (!firstCall && _serviceOptions.SendMessagesToManagerAboutBeingAlive)
                     {
-                        _logger.LogInformation("CodeCompilerService still alive...");
-                        server?.SendToClient("CodeCompilerService still alive...");
+                        LogServerInfo("CodeCompilerService still alive...");
                     }
 
                     //CreateDummyFiles();
@@ -79,8 +78,7 @@ namespace CodeCompilerService
                         var res = codeCompiler.CreateAssemblyToPath(paresedFile.FullPath, _codeCompilerLibOptions.OutputPath);
                         if (res.Success)
                         {
-                            _logger.LogInformation($"File {paresedFile.Name} compiled correctly");
-                            server?.SendToClient($"File {paresedFile.Name} compiled correctly");
+                            LogServerInfo($"File {paresedFile.Name} compiled correctly");
                         }
                         else
                         {
@@ -103,7 +101,10 @@ namespace CodeCompilerService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                if(!stoppingToken.IsCancellationRequested && ex.Message != "A task was canceled.")
+                {
+                    _logger.LogError(ex.Message);
+                }
             }
         }
 
@@ -118,16 +119,15 @@ namespace CodeCompilerService
                 server = null;
             }
 
-            _logger.LogInformation("STARTING CodeCompilerService...");
-            server?.SendToClient("STARTING CodeCompilerService...");
+            LogServerInfo("STARTING CodeCompilerService...");
             try
             {
                 fileWatcher.Path = _codeCompilerLibOptions.InputPath;
+                fileWatcher.Filter = "*.cs";
                 fileWatcher.Created += FileWatcher_FileCreated;
                 fileWatcher.EnableRaisingEvents = true;
                 fileWatcher.InternalBufferSize = _serviceOptions.InternalBufferSize;
-                _logger.LogInformation($"CodeCompilerService listening for files in directory {fileWatcher.Path}");
-                server?.SendToClient($"CodeCompilerService listening for files in directory {fileWatcher.Path}");
+                LogServerInfo($"CodeCompilerService listening for files in directory {fileWatcher.Path}");
             }
                
             catch (Exception ex)
@@ -138,12 +138,24 @@ namespace CodeCompilerService
             return base.StartAsync(cancellationToken);
         }
 
+        public override Task StopAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                LogServerInfo("ENDING CodeCompilerService");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+            }
+            return base.StopAsync(cancellationToken);
+        }
+
         private void FileWatcher_FileCreated(object sender, FileSystemEventArgs e)
         {
             try
             {
-                _logger.LogInformation($"File {e.Name} was added to queue");
-                server?.SendToClient($"File {e.Name} was added to queue");
+                LogServerInfo($"File {e.Name} was added to queue");
                 queueFiles.Enqueue(e);
             }
             catch (Exception ex)
@@ -152,18 +164,10 @@ namespace CodeCompilerService
             }
         }
 
-        public override Task StopAsync(CancellationToken cancellationToken)
+        private void LogServerInfo(string message)
         {
-            try
-            {
-                _logger.LogInformation("ENDING CodeCompilerService");
-                server?.SendToClient("ENDING CodeCompilerService");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.Message);
-            }
-            return base.StopAsync(cancellationToken);
+            _logger.LogInformation(message);
+            server?.SendToClient(message);
         }
 
         private void CreateDummyFiles()
