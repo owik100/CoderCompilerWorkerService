@@ -51,8 +51,6 @@ namespace CodeCompilerService
                         LogServerInfo("CodeCompilerService still alive...");
                     }
 
-                    //CreateDummyFiles();
-
                     Semaphore sem = new Semaphore(_serviceOptions.MaxThreads, _serviceOptions.MaxThreads);
                     while (queueFiles.Count > 0)
                     {
@@ -61,9 +59,6 @@ namespace CodeCompilerService
                         ThreadPool.QueueUserWorkItem(ProcessItem, file);
                     }
 
-                    // When the queue is empty, you have to wait for all processing
-                    // threads to complete.
-                    // If you can acquire the semaphore MaxThreads times, all workers are done
                     int count = 0;
                     while (count < _serviceOptions.MaxThreads)
                     {
@@ -71,7 +66,6 @@ namespace CodeCompilerService
                         ++count;
                     }
 
-                    // the code to process an item
                     void ProcessItem(object item)
                     {
                         FileSystemEventArgs paresedFile = item as FileSystemEventArgs;
@@ -91,7 +85,6 @@ namespace CodeCompilerService
                             _logger.LogWarning($"File {paresedFile.Name} compiled with errors: {sb.ToString()}");
                             server?.SendToClient($"[SERVICE ERROR]File {paresedFile.Name} compiled with errors: {sb.ToString()}");
                         }
-                        // when done processing, release the semaphore
                         sem.Release();
                     }
 
@@ -168,27 +161,6 @@ namespace CodeCompilerService
         {
             _logger.LogInformation(message);
             server?.SendToClient(message);
-        }
-
-        private void CreateDummyFiles()
-        {
-            string ok = "namespace HelloWorld{class Hello{static void Main(string[] args){System.Console.WriteLine(\"Hello World!\");System.Threading.Thread.Sleep(3000);System.Console.ReadKey();}}}";
-            string bad = "namespace  2 2 dim HelloWorld{class Hello{static void Main(string[] args){System.Console.WritqqqqqeLine(\"Hello World!\");System.Threading.Thread.Sleep(3000);System.Console.ReadKey();}}}";
-            for (int i = 0; i < 1000; i++)
-            {
-                using (StreamWriter sw = File.CreateText(fileWatcher.Path + "\\File" + i + ".cs"))
-                {
-                    if (i % 10 == 0)
-                    {
-                        sw.WriteLine(bad);
-                    }
-                    else
-                    {
-                        sw.WriteLine(ok);
-                    }
-
-                }
-            }
         }
     }
 }
