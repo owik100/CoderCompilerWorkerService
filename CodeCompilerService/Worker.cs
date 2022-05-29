@@ -1,5 +1,6 @@
 using CodeCompilerNs;
 using CodeCompilerSettingsModels;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using System.Text;
 using System.Threading;
@@ -36,7 +37,12 @@ namespace CodeCompilerService
             {
                 outputKind = Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary;
             }
-            codeCompiler = new CodeCompiler(cSharpCompilationOptions: new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(outputKind));
+
+            CSharpCompilationOptions compOptions = new CSharpCompilationOptions(outputKind)
+                .WithOverflowChecks(true)
+                .WithOptimizationLevel(OptimizationLevel.Release);
+
+            codeCompiler = new CodeCompiler(compOptions);
         }
 
 
