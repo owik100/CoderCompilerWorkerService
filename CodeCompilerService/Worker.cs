@@ -1,3 +1,4 @@
+using Basic.Reference.Assemblies;
 using CodeCompilerNs;
 using CodeCompilerSettingsModels;
 using Microsoft.CodeAnalysis;
@@ -28,8 +29,8 @@ namespace CodeCompilerService
             fileWatcher = new FileSystemWatcher();
             queueFiles = new Queue<FileSystemEventArgs>();
 
-            Microsoft.CodeAnalysis.OutputKind outputKind = Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary;
-            if (_codeCompilerLibOptions.BuildToConsoleApp)
+            OutputKind outputKind;
+            if (_codeCompilerLibOptions.BuildType.Equals("ConsoleApplication", StringComparison.CurrentCultureIgnoreCase))
             {
                 outputKind = Microsoft.CodeAnalysis.OutputKind.ConsoleApplication;
             }
@@ -38,11 +39,41 @@ namespace CodeCompilerService
                 outputKind = Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary;
             }
 
+            IEnumerable<PortableExecutableReference> referencesAssemby = ReferenceAssemblies.Net461;
+            var netVersion = _codeCompilerLibOptions.NetVersionToCompile;
+            switch (netVersion)
+            {
+                case "Net461":
+                    referencesAssemby = ReferenceAssemblies.Net461;
+                    break;
+                case "Net472":
+                    referencesAssemby = ReferenceAssemblies.Net472;
+                    break;
+                case "NetStandard13":
+                    referencesAssemby = ReferenceAssemblies.NetStandard13;
+                    break; 
+                case "NetStandard20":
+                    referencesAssemby = ReferenceAssemblies.NetStandard20;
+                    break; 
+                case "NetCoreApp31":
+                    referencesAssemby = ReferenceAssemblies.NetCoreApp31;
+                    break; 
+                case "Net50":
+                    referencesAssemby = ReferenceAssemblies.Net50;
+                    break;
+                case "Net60":
+                    referencesAssemby = ReferenceAssemblies.Net60;
+                    break;
+                default:
+                    referencesAssemby = ReferenceAssemblies.Net461;
+                    break;
+            }
+
             CSharpCompilationOptions compOptions = new CSharpCompilationOptions(outputKind)
                 .WithOverflowChecks(true)
                 .WithOptimizationLevel(OptimizationLevel.Release);
 
-            codeCompiler = new CodeCompiler(compOptions);
+            codeCompiler = new CodeCompiler(referencesAssemby, compOptions);
         }
 
 
