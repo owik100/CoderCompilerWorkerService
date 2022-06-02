@@ -28,4 +28,5 @@ Additionally, you need to add a reference to the project [Code Compiler Settings
  - CodeCompilerLibOptions:
     - InputPath: Path to the folder where files for compilation will be added.
     - OutputPath: Path to the folder where the compiled files will appear.
-    - BuildToConsoleApp: Specifies whether to compile files to the dll format or exe (Console app).
+    - BuildType: Specifies whether to compile files to the dll format or exe (Console app). (Possible options: DynamicallyLinkedLibrary, ConsoleApplication).
+    - NetVersionToCompile. .NET version reference. (Possible options: Net461, Net472, NetStandard13, NetStandard20, NetCoreApp31, Net50, Net60).
